@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gravl Outreach Agent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --surface2: #1a1a1a; --border: #222222;
+    --accent: #c8f135; --accent2: #f1c135; --text: #f0f0f0; --muted: #666666;
+    --danger: #ff4444; --success: #4ade80;
+  }
+  body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; }
+  .logo span { color: var(--accent); }
+  .status-bar { display: flex; gap: 16px; align-items: center; }
+  .stat { display: flex; flex-direction: column; align-items: flex-end; }
+  .stat-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; color: var(--accent); line-height: 1; }
+  .stat-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .divider { width: 1px; height: 32px; background: var(--border); }
+  .main { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 61px); }
+  .sidebar { border-right: 1px solid var(--border); overflow-y: auto; background: var(--surface); }
+  .sidebar-section { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 12px; }
+  input, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 11px; font-family: 'DM Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.2s; border-radius: 4px; }
+  input:focus, select:focus { border-color: var(--accent); }
+  .channel-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .channel-btn { padding: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; text-align: center; border-radius: 4px; transition: all 0.15s; }
+  .channel-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,241,53,0.08); }
+  .structure-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pill { padding: 4px 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 10px; border-radius: 20px; cursor: pointer; transition: all 0.15s; font-family: 'DM Mono', monospace; }
+  .pill.active { border-color: var(--accent2); color: var(--accent2); background: rgba(241,193,53,0.08); }
+  .btn { width: 100%; padding: 10px; background: var(--accent); color: #000; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; border-radius: 4px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn:hover { background: #d4f545; }
+  .btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-small { width: auto; padding: 7px 14px; font-size: 11px; }
+  .content { overflow-y: auto; background: var(--bg); }
+  .content-inner { padding: 28px; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--muted); text-align: center; padding: 40px; }
+  .empty-icon { font-size: 48px; opacity: 0.3; }
+  .message-block { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 18px; overflow: hidden; }
+  .message-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; gap: 8px; }
+  .message-tag { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tag-badge { padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+  .tag-dm { background: rgba(200,241,53,0.15); color: var(--accent); }
+  .tag-email { background: rgba(241,193,53,0.15); color: var(--accent2); }
+  .structure-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .copy-btn { padding: 5px 12px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-family: 'DM Mono', monospace; font-size: 10px; border-radius: 4px; transition: all 0.15s; }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--success); color: var(--success); }
+  .message-body { padding: 16px 18px; line-height: 1.7; font-size: 13px; white-space: pre-wrap; color: #ddd; }
+  .followup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+  .followup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .followup-card-header { padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .followup-day { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--success); }
+  .followup-body { padding: 14px; font-size: 12px; line-height: 1.6; color: #ccc; white-space: pre-wrap; }
+  .send-confirm { background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .confirm-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .confirm-text strong { color: var(--text); }
+  .btn-confirm { padding: 10px 20px; background: var(--accent); color: #000; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; border-radius: 4px; white-space: nowrap; transition: background 0.15s; }
+  .btn-confirm:hover { background: #d4f545; }
+  .leads-list { display: flex; flex-direction: column; gap: 5px; max-height: 340px; overflow-y: auto; }
+  .lead-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+  .lead-item:hover { border-color: var(--accent); }
+  .lead-item.selected { border-color: var(--accent); background: rgba(200,241,53,0.05); }
+  .lead-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .lead-username { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lead-followers { font-size: 10px; color: var(--muted); }
+  .lead-status { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; margin-left: 8px; }
+  .lead-status.contacted { background: var(--accent2); }
+  .lead-status.followup1 { background: var(--success); }
+  .lead-status.followup2 { background: #60a5fa; }
+  .lead-status.followup3 { background: #c084fc; }
+  .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 16px; color: var(--muted); }
+  .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); padding: 12px 18px; border-radius: 6px; font-size: 12px; font-family: 'DM Mono', monospace; z-index: 999; display: none; }
+  .error-msg { background: rgba(255,68,68,0.1); border: 1px solid var(--danger); color: var(--danger); padding: 12px 16px; border-radius: 4px; font-size: 12px; line-height: 1.5; }
+  .sync-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sync-status { font-size: 11px; color: var(--muted); }
+  .sync-status.ok { color: var(--success); }
+  .sync-status.err { color: var(--danger); }
+  .search-input { margin-bottom: 8px; }
+  .progress-dots { display: flex; gap: 5px; }
+  .progress-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: pulse 1.2s ease-in-out infinite; }
+  .progress-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .progress-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100% { opacity: 0.3; } 40% { opacity: 1; } }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">GRAVL <span>OUTREACH</span></div>
+  <div class="status-bar">
+    <div class="stat"><div class="stat-val" id="totalLeads">0</div><div class="stat-label">Leads</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="stat-val" id="contactedCount">0</div><div class="stat-label">Contactados</div></div>
+    <div class="divider"></div>
+    <div class="stat"><div class="stat-val" id="pendingCount">0</div><div class="stat-label">Pendientes</div></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-title">🔄 Google Sheet</div>
+      <div class="sync-bar">
+        <div class="sync-status" id="syncStatus">Sin sincronizar</div>
+        <button class="btn btn-small" onclick="syncFromSheet()" id="syncBtn">Sincronizar</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5;">Importa leads frescos en tiempo real.</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title">📡 Canal</div>
+      <div class="channel-toggle">
+        <div class="channel-btn active" id="btn-ig" onclick="setChannel('instagram')">📸 Instagram</div>
+        <div class="channel-btn" id="btn-email" onclick="setChannel('email')">✉️ Email</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title">🎲 Estructura</div>
+      <div class="structure-pills">
+        <div class="pill active" onclick="setStructure(this,'auto')">Auto (rota)</div>
+        <div class="pill" onclick="setStructure(this,'hook_question')">Pregunta</div>
+        <div class="pill" onclick="setStructure(this,'compliment_pitch')">Elogio→Pitch</div>
+        <div class="pill" onclick="setStructure(this,'curiosity')">Curiosidad</div>
+        <div class="pill" onclick="setStructure(this,'direct')">Directo</div>
+        <div class="pill" onclick="setStructure(this,'social_proof')">Social Proof</div>
+        <div class="pill" onclick="setStructure(this,'value_first')">Value First</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title">👥 Leads <span id="leadsCount" style="color:var(--accent)"></span></div>
+      <div class="search-input">
+        <input type="text" placeholder="Buscar @username..." oninput="filterLeads(this.value)">
+      </div>
+      <div class="leads-list" id="leadsList">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding:12px;">Sincronizá el Sheet ↑</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title">Leyenda</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)"><div class="lead-status"></div> Sin contactar</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)"><div class="lead-status contacted"></div> 1er mensaje</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)"><div class="lead-status followup1"></div> Follow-up 1</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)"><div class="lead-status followup2"></div> Follow-up 2</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)"><div class="lead-status followup3"></div> Follow-up 3</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="content-inner" id="contentArea">
+      <div class="empty-state">
+        <div class="empty-icon">⚡</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;">Gravl Outreach Agent</div>
+        <div style="max-width:300px;line-height:1.6;font-size:12px;">
+          Hacé click en <strong style="color:var(--accent)">Sincronizar</strong> para importar tus leads, luego seleccioná uno para generar mensajes con IA.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SHEET_ID = '1Ker4Hxa_dYT9ChmWjusL0vxlZo7zv9tpVI-irwpEZ3A';
+const API_KEY = 'AIzaSyBoYFsjVuWdAxMYWypjqu3rR8fbNuF0KdY';
+
+const STRUCTURES = ['hook_question','compliment_pitch','curiosity','direct','social_proof','value_first'];
+const STRUCT_LABELS = {
+  hook_question:'Pregunta Hook', compliment_pitch:'Elogio → Pitch',
+  curiosity:'Curiosidad', direct:'Directo', social_proof:'Social Proof', value_first:'Value First'
+};
+
+let leads = JSON.parse(localStorage.getItem('gravl_leads') || '[]');
+let structCounter = parseInt(localStorage.getItem('gravl_struct_counter') || '0');
+let selectedChannel = 'instagram';
+let selectedStructure = 'auto';
+let selectedIdx = null;
+let filterQuery = '';
+
+function save() {
+  localStorage.setItem('gravl_leads', JSON.stringify(leads));
+  localStorage.setItem('gravl_struct_counter', String(structCounter));
+}
+
+function fmtF(f) {
+  const n = parseInt(String(f).replace(/,/g,''));
+  if (isNaN(n)) return f||'';
+  if (n>=1000000) return (n/1000000).toFixed(1).replace('.0','')+'M';
+  if (n>=1000) return (n/1000).toFixed(1).replace('.0','')+'K';
+  return String(n);
+}
+
+function updateStats() {
+  document.getElementById('totalLeads').textContent = leads.length;
+  const c = leads.filter(l=>l.status!=='new').length;
+  document.getElementById('contactedCount').textContent = c;
+  document.getElementById('pendingCount').textContent = leads.length - c;
+  document.getElementById('leadsCount').textContent = leads.length ? `(${leads.length})` : '';
+}
+
+function filterLeads(q) { filterQuery = q.toLowerCase(); renderLeads(); }
+
+function renderLeads() {
+  const list = document.getElementById('leadsList');
+  const filtered = filterQuery ? leads.filter(l=>l.username.toLowerCase().includes(filterQuery)) : leads;
+  if (!leads.length) { list.innerHTML = '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px;">Sincronizá el Sheet ↑</div>'; return; }
+  if (!filtered.length) { list.innerHTML = '<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px;">Sin resultados</div>'; return; }
+  list.innerHTML = filtered.map(l => {
+    const realIdx = leads.indexOf(l);
+    return `<div class="lead-item ${selectedIdx===realIdx?'selected':''}" onclick="selectLead(${realIdx})">
+      <div class="lead-info">
+        <div class="lead-username">@${l.username}</div>
+        <div class="lead-followers">${l.followers?fmtF(l.followers)+' seg':''}${l.email?' · ✉️':''}</div>
+      </div>
+      <div class="lead-status ${l.status||'new'}"></div>
+    </div>`;
+  }).join('');
+}
+
+async function syncFromSheet() {
+  const btn = document.getElementById('syncBtn');
+  const status = document.getElementById('syncStatus');
+  btn.disabled = true; btn.textContent = '...';
+  status.className = 'sync-status'; status.textContent = 'Conectando...';
+
+  try {
+    // Try to find the right sheet tab name first
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}`;
+    const metaResp = await fetch(metaUrl);
+    if (!metaResp.ok) {
+      const e = await metaResp.json();
+      throw new Error(e.error?.message || 'Error conectando al Sheet');
+    }
+    const meta = await metaResp.json();
+    // Find "Leads" tab, fallback to first sheet
+    const sheetName = meta.sheets.find(s=>s.properties.title==='Leads')?.properties.title || meta.sheets[0].properties.title;
+
+    const range = encodeURIComponent(`${sheetName}!A:G`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
+    const resp = await fetch(url);
+    if (!resp.ok) { const e=await resp.json(); throw new Error(e.error?.message||resp.statusText); }
+
+    const data = await resp.json();
+    const rows = data.values || [];
+    if (rows.length < 2) throw new Error('El Sheet está vacío');
+
+    // Col: A=Username B=Followers C=Email D=ProfileURL E=InstagramURL F=ViralVideo G=DateAdded
+    const newLeads = rows.slice(1).map(row => {
+      const username = (row[0]||'').trim();
+      if (!username) return null;
+      const existing = leads.find(l=>l.username.toLowerCase()===username.toLowerCase());
+      return {
+        id: existing?.id || Date.now()+Math.random(),
+        username,
+        followers: row[1]||'',
+        email: (row[2]&&row[2]!=='Not found') ? row[2] : '',
+        profileUrl: row[3]||'',
+        instagram: row[4]||'',
+        viralVideo: row[5]||'',
+        dateAdded: row[6]||'',
+        status: existing?.status||'new',
+        contactedAt: existing?.contactedAt||null,
+      };
+    }).filter(Boolean);
+
+    leads = newLeads;
+    save(); renderLeads(); updateStats();
+    status.className = 'sync-status ok';
+    status.textContent = `✓ ${leads.length} leads · ${new Date().toLocaleTimeString('es-AR')}`;
+    showToast(`✅ ${leads.length} leads importados`);
+
+  } catch(err) {
+    status.className = 'sync-status err';
+    status.textContent = '✗ ' + err.message;
+    showToast('❌ ' + err.message);
+    console.error(err);
+  }
+
+  btn.disabled = false; btn.textContent = 'Sincronizar';
+}
+
+function selectLead(i) { selectedIdx=i; renderLeads(); generateMessages(leads[i]); }
+
+function setChannel(ch) {
+  selectedChannel = ch;
+  document.getElementById('btn-ig').classList.toggle('active', ch==='instagram');
+  document.getElementById('btn-email').classList.toggle('active', ch==='email');
+  if (selectedIdx !== null) generateMessages(leads[selectedIdx]);
+}
+
+function setStructure(el, s) {
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); selectedStructure = s;
+}
+
+function getStructure() {
+  if (selectedStructure !== 'auto') return selectedStructure;
+  const s = STRUCTURES[structCounter % STRUCTURES.length]; structCounter++; save(); return s;
+}
+
+async function generateMessages(lead) {
+  const area = document.getElementById('contentArea');
+  area.innerHTML = `<div class="loading-overlay"><div class="spinner"></div><div>Generando mensajes para @${lead.username}...</div><div class="progress-dots"><span></span><span></span><span></span></div></div>`;
+
+  const structure = getStructure();
+  const isEmail = selectedChannel === 'email';
+
+  const structDescs = {
+    hook_question: 'Abrí con una pregunta genuina y específica sobre su contenido, luego presentá Gravl de forma natural.',
+    compliment_pitch: 'Elogio MUY específico sobre algo concreto de su perfil, nunca genérico. Luego la propuesta.',
+    curiosity: 'Generá intriga desde el principio, revelá la propuesta después.',
+    direct: 'Sin rodeos. Quién sos, qué buscás, por qué específicamente ellos. Corto.',
+    social_proof: 'Mencioná el momentum de Gravl como app de AI fitness, luego la propuesta.',
+    value_first: 'Empezá dando un insight sobre su audiencia o nicho, luego la colaboración como extensión natural.',
+  };
+
+  const channelInstr = isEmail
+    ? `EMAIL. Asunto corto y directo. Máximo 180 palabras. Profesional pero cercano. Email: ${lead.email||'[sin email]'}`
+    : `INSTAGRAM DM. Máximo 120 palabras. Casual. Sin párrafos largos. Que suene escrito a mano.`;
+
+  const prompt = `Sos del equipo de Gravl, app de AI personal trainer en crecimiento. Buscás creadores fitness para UGC pagado.
+
+CREADOR:
+- Username: @${lead.username}
+- Followers: ${lead.followers||'desconocido'}
+- Email: ${lead.email||'no disponible'}
+- Instagram: ${lead.instagram||'no disponible'}
+- Video viral: ${lead.viralVideo||'no disponible'}
+
+CANAL: ${isEmail?'Email':'Instagram DM'}
+${channelInstr}
+
+ESTRUCTURA INICIAL: "${structure}" — ${structDescs[structure]}
+
+Devolvé SOLO JSON sin backticks ni markdown:
+{"initial":"...","followup1":"...día +1, diferente approach, más corto...","followup2":"...día +2, diferente, urgencia suave...","followup3":"...día +4, último intento, muy corto, puerta abierta...","subject":"asunto si email, sino vacío"}
+
+REGLAS CRÍTICAS:
+- NUNCA frases genéricas tipo "me encantó tu contenido" sin especificar qué exactamente
+- Que suene escrito por una persona real, no por una empresa ni una IA
+- Follow-ups notablemente distintos entre sí en tono y approach
+- Gravl PAGA por videos UGC — no pide posts gratis
+- Máx 1 emoji por mensaje, solo si suma naturalmente`;
+
+  try {
+    const resp = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1200,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (!data.content) throw new Error(JSON.stringify(data));
+    const raw = data.content.map(c=>c.text||'').join('');
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch(e) { const m=raw.match(/\{[\s\S]*\}/); if(m) parsed=JSON.parse(m[0]); else throw new Error('No se pudo parsear'); }
+    renderOutput(lead, parsed, structure, isEmail);
+  } catch(err) {
+    area.innerHTML = `<div class="content-inner"><div class="error-msg">❌ Error: ${err.message}</div></div>`;
+  }
+}
+
+function renderOutput(lead, msgs, structure, isEmail) {
+  window._msgs = { initial: msgs.initial, fu1: msgs.followup1, fu2: msgs.followup2, fu3: msgs.followup3 };
+  const area = document.getElementById('contentArea');
+  area.innerHTML = `
+    <div class="content-inner">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;">@${lead.username}</div>
+          <div style="color:var(--muted);font-size:11px;margin-top:4px;">
+            ${lead.followers?fmtF(lead.followers)+' seguidores':''}
+            ${lead.email?' · '+lead.email:''}
+            · <span style="color:var(--accent2)">${STRUCT_LABELS[structure]}</span>
+          </div>
+        </div>
+        <button class="btn btn-small" onclick="generateMessages(leads[${selectedIdx}])">🔄 Regenerar</button>
+      </div>
+
+      <div class="message-block">
+        <div class="message-header">
+          <div class="message-tag">
+            <span class="tag-badge ${isEmail?'tag-email':'tag-dm'}">${isEmail?'✉️ EMAIL':'📸 INSTAGRAM DM'}</span>
+            <span class="structure-label">${STRUCT_LABELS[structure]}</span>
+            ${isEmail&&msgs.subject?`<span style="font-size:11px;color:var(--muted)">Asunto: <strong style="color:var(--text)">${msgs.subject}</strong></span>`:''}
+          </div>
+          <button class="copy-btn" id="cb-i" onclick="doCopy('cb-i','initial')">📋 Copiar</button>
+        </div>
+        <div class="message-body">${msgs.initial}</div>
+      </div>
+
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--success);margin-bottom:12px;">⏱ FOLLOW-UPS</div>
+
+      <div class="followup-grid">
+        <div class="followup-card">
+          <div class="followup-card-header"><span class="followup-day">+1 día</span><button class="copy-btn" id="cb-1" onclick="doCopy('cb-1','fu1')">📋</button></div>
+          <div class="followup-body">${msgs.followup1}</div>
+        </div>
+        <div class="followup-card">
+          <div class="followup-card-header"><span class="followup-day">+2 días</span><button class="copy-btn" id="cb-2" onclick="doCopy('cb-2','fu2')">📋</button></div>
+          <div class="followup-body">${msgs.followup2}</div>
+        </div>
+        <div class="followup-card">
+          <div class="followup-card-header"><span class="followup-day">+4 días</span><button class="copy-btn" id="cb-3" onclick="doCopy('cb-3','fu3')">📋</button></div>
+          <div class="followup-body">${msgs.followup3}</div>
+        </div>
+      </div>
+
+      <div class="send-confirm">
+        <div class="confirm-text">
+          <strong>¿Enviaste el mensaje a @${lead.username}?</strong><br>
+          Marcalo para registrar la fecha y trackear los follow-ups.
+        </div>
+        <button class="btn-confirm" onclick="markContacted(${selectedIdx})">✅ Marcar Enviado</button>
+      </div>
+
+      ${lead.contactedAt?`
+        <div style="margin-top:12px;padding:11px 14px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:6px;font-size:11px;color:var(--success);">
+          📅 Contactado el ${new Date(lead.contactedAt).toLocaleDateString('es-AR')} · Estado: <strong>${lead.status}</strong>
+        </div>`:''}
+    </div>`;
+}
+
+function doCopy(btnId, msgKey) {
+  const text = (window._msgs||{})[msgKey]||'';
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.classList.add('copied');
+    const orig = btn.innerHTML;
+    btn.textContent = '✓ Copiado';
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.innerHTML=orig; }, 2000);
+  });
+}
+
+function markContacted(i) {
+  leads[i].status = 'contacted';
+  leads[i].contactedAt = new Date().toISOString();
+  save(); renderLeads(); updateStats();
+  showToast(`✅ @${leads[i].username} marcado como contactado`);
+  generateMessages(leads[i]);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(()=>t.style.display='none', 3500);
+}
+
+renderLeads(); updateStats();
+</script>
+</body>
+</html>
